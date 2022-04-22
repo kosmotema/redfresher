@@ -6,7 +6,7 @@
 // @license     Mozilla Public License 2.0
 // @downloadURL https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @homepageURL https://github.com/kosmotema/redfresher
-// @version     2.6.0
+// @version     2.6.1
 // @grant       GM_addStyle
 // @noframes
 // ==/UserScript==
@@ -57,22 +57,35 @@
       () => location.reload(),
       7500 + Math.round(Math.random() * 2500)
     );
-    lsUpdateState();
   }
 
   function stopTimer() {
     clearTimeout(timeout);
     timeout = null;
-    lsUpdateState();
   }
 
-  function toggleTimer() {
+  function toggleTimerWithLS() {
     if (timeout) {
       stopTimer();
     } else {
       startTimer();
     }
+    lsUpdateState();
   }
+
+  const timerPauseToggle = (function () {
+    let state;
+
+    return () => {
+      if (!!timeout) {
+        stopTimer();
+        state = true;
+      } else if (state) {
+        startTimer();
+        state = false;
+      }
+    };
+  })();
 
   if (ls.get(LS_STATE_KEY)) {
     startTimer();
@@ -177,12 +190,14 @@
   colorize();
 
   element.addEventListener('click', () => {
-    toggleTimer();
+    toggleTimerWithLS();
     titlify();
     colorize();
   });
 
   element.addEventListener('dragstart', (event) => {
+    timerPauseToggle();
+
     event.dataTransfer.effectAllowed = 'move';
 
     element.classList.add(BUTTON_CLASS_NAME + '_moving');
@@ -209,6 +224,8 @@
 
   element.addEventListener('dragend', (event) => {
     event.preventDefault();
+
+    timerPauseToggle();
 
     element.classList.remove(BUTTON_CLASS_NAME + '_moving');
     bg.classList.remove(BG_CLASS_NAME + '_active');
