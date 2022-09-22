@@ -6,7 +6,7 @@
 // @license     Mozilla Public License 2.0
 // @downloadURL https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @homepageURL https://github.com/kosmotema/redfresher
-// @version     2.6.1
+// @version     2.7.0
 // @grant       GM_addStyle
 // @noframes
 // ==/UserScript==
@@ -131,6 +131,10 @@
   background-color: green;
 }
 
+.${BUTTON_CLASS_NAME}_paused {
+  background-color: orange;
+}
+
 .${BUTTON_CLASS_NAME}_moving {
   background-color: white;
 }
@@ -189,8 +193,16 @@
   titlify();
   colorize();
 
-  element.addEventListener('click', () => {
-    toggleTimerWithLS();
+  element.addEventListener('click', (event) => {
+    event.stopPropagation();
+
+    if (!timeout && ls.get(LS_STATE_KEY) !== null) {
+      startTimer();
+      element.classList.remove(BUTTON_CLASS_NAME + '_paused');
+    } else {
+      toggleTimerWithLS();
+    }
+
     titlify();
     colorize();
   });
@@ -232,4 +244,15 @@
   });
 
   document.body.append(bg, element);
+
+  document.addEventListener('click', () => {
+    if (!timeout) {
+      return;
+    }
+
+    stopTimer();
+    element.classList.remove(BUTTON_CLASS_NAME + '_active');
+    element.classList.add(BUTTON_CLASS_NAME + '_paused');
+    element.title = 'Авто-обновление страницы приостановлено';
+  });
 })();
