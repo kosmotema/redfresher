@@ -5,8 +5,9 @@
 // @namespace   kosmotema.dev
 // @license     Mozilla Public License 2.0
 // @downloadURL https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
+// @updateURL   https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @homepageURL https://github.com/kosmotema/redfresher
-// @version     2.7.1
+// @version     2.8.0
 // @grant       GM_addStyle
 // @noframes
 // ==/UserScript==
@@ -125,6 +126,8 @@
   top: ${adjustTop(ls.get(LS_TOP_KEY) ?? Infinity)}px;
   cursor: pointer;
   border: none;
+
+  transition: background-color 0.3s ease;
 }
 
 .${BUTTON_CLASS_NAME}_active {
@@ -171,7 +174,7 @@
   const bg = document.createElement('div');
   bg.setAttribute('class', BG_CLASS_NAME);
 
-  const bgText = document.createElement('h1');
+  const bgText = document.createElement('p');
   bgText.textContent = 'Перемещайте кнопку внутри этой области';
   bgText.setAttribute('class', BG_CLASS_NAME + '__text');
   bg.append(bgText);
