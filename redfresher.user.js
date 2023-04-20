@@ -7,7 +7,7 @@
 // @downloadURL https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @updateURL   https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @homepageURL https://github.com/kosmotema/redfresher
-// @version     2.8.0
+// @version     3.0.0
 // @grant       GM_addStyle
 // @noframes
 // ==/UserScript==
@@ -114,32 +114,33 @@
 
   GM_addStyle(`
 .${BUTTON_CLASS_NAME} {
-  --image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='${SIZE}px' viewBox='0 0 24 24' width='${SIZE}px' fill='%23000000'%3E%3Cpath d='M0 0h24v24H0V0z' fill='none'/%3E%3Cpath d='M17.65 6.35c-1.63-1.63-3.94-2.57-6.48-2.31-3.67.37-6.69 3.35-7.1 7.02C3.52 15.91 7.27 20 12 20c3.19 0 5.93-1.87 7.21-4.56.32-.67-.16-1.44-.9-1.44-.37 0-.72.2-.88.53-1.13 2.43-3.84 3.97-6.8 3.31-2.22-.49-4.01-2.3-4.48-4.52C5.31 9.44 8.26 6 12 6c1.66 0 3.14.69 4.22 1.78l-1.51 1.51c-.63.63-.19 1.71.7 1.71H19c.55 0 1-.45 1-1V6.41c0-.89-1.08-1.34-1.71-.71l-.64.65z'/%3E%3C/svg%3E");
-  
-  -webkit-mask-image: var(--image);
-  mask-image: var(--image);
-  background-color: darkgray;
+  color: darkgray;
   position: fixed;
   width: ${SIZE}px;
   height: ${SIZE}px;
   left: ${adjustLeft(ls.get(LS_LEFT_KEY) ?? 0)}px;
   top: ${adjustTop(ls.get(LS_TOP_KEY) ?? Infinity)}px;
   cursor: pointer;
-  border: none;
+  border-radius: 4px;
 
-  transition: background-color 0.3s ease;
+  transition: color 0.3s ease;
 }
 
 .${BUTTON_CLASS_NAME}_active {
-  background-color: green;
+  color: green;
 }
 
 .${BUTTON_CLASS_NAME}_paused {
-  background-color: orange;
+  color: orange;
 }
 
 .${BUTTON_CLASS_NAME}_moving {
   background-color: white;
+}
+
+.${BUTTON_CLASS_NAME}__icon {
+  width: 100%;
+  height: 100%;
 }
 
 .${BG_CLASS_NAME} {
@@ -168,6 +169,9 @@
 .${BG_CLASS_NAME}__text {
   color: white;
   margin: auto;
+
+  font-size: 1.5rem;
+  font-weight: 500;
 }
 `);
 
@@ -183,6 +187,8 @@
   element.setAttribute('class', BUTTON_CLASS_NAME);
   element.setAttribute('draggable', 'true');
   element.setAttribute('role', 'button');
+  element.setAttribute('tabindex', '0');
+  element.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' class='${BUTTON_CLASS_NAME}__icon'><path d='M17.65 6.35c-1.63-1.63-3.94-2.57-6.48-2.31-3.67.37-6.69 3.35-7.1 7.02C3.52 15.91 7.27 20 12 20c3.19 0 5.93-1.87 7.21-4.56.32-.67-.16-1.44-.9-1.44-.37 0-.72.2-.88.53-1.13 2.43-3.84 3.97-6.8 3.31-2.22-.49-4.01-2.3-4.48-4.52C5.31 9.44 8.26 6 12 6c1.66 0 3.14.69 4.22 1.78l-1.51 1.51c-.63.63-.19 1.71.7 1.71H19c.55 0 1-.45 1-1V6.41c0-.89-1.08-1.34-1.71-.71l-.64.65z' fill='currentcolor'/></svg>`;
 
   function colorize() {
     element.classList.toggle(BUTTON_CLASS_NAME + '_active', !!timeout);
@@ -196,7 +202,7 @@
   titlify();
   colorize();
 
-  element.addEventListener('click', (event) => {
+  function handleAction(event) {
     event.stopPropagation();
 
     if (!timeout && ls.get(LS_STATE_KEY) !== null) {
@@ -208,6 +214,13 @@
 
     titlify();
     colorize();
+  }
+
+  element.addEventListener('click', handleAction);
+  element.addEventListener('keyup', (event) => {
+    if (event.code === 'Enter' || event.code === 'Space') {
+      handleAction(event);
+    }
   });
 
   element.addEventListener('dragstart', (event) => {
