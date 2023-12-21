@@ -7,7 +7,7 @@
 // @downloadURL https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @updateURL   https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @homepageURL https://github.com/kosmotema/redfresher
-// @version     3.0.0
+// @version     3.1.0
 // @grant       GM_addStyle
 // @noframes
 // ==/UserScript==
@@ -45,51 +45,24 @@
     },
   };
 
-  function lsUpdateState() {
-    if (timeout) {
-      ls.set(LS_STATE_KEY, String(timeout));
+  function isActive() {
+    return !!timeout;
+  }
+
+  function isSuspended() {
+    return timeout === false;
+  }
+
+  function updateLocalStorageState() {
+    if (isSuspended()) {
+      return;
+    }
+
+    if (isActive()) {
+      ls.set(LS_STATE_KEY, 'enabled');
     } else {
       ls.remove(LS_STATE_KEY);
     }
-  }
-
-  function startTimer() {
-    timeout = setTimeout(
-      () => location.reload(),
-      7500 + Math.round(Math.random() * 2500)
-    );
-  }
-
-  function stopTimer() {
-    clearTimeout(timeout);
-    timeout = null;
-  }
-
-  function toggleTimerWithLS() {
-    if (timeout) {
-      stopTimer();
-    } else {
-      startTimer();
-    }
-    lsUpdateState();
-  }
-
-  const timerPauseToggle = (function () {
-    let state;
-
-    return () => {
-      if (!!timeout) {
-        stopTimer();
-        state = true;
-      } else if (state) {
-        startTimer();
-        state = false;
-      }
-    };
-  })();
-
-  if (ls.get(LS_STATE_KEY)) {
-    startTimer();
   }
 
   function clamp(value, min, max) {
@@ -176,44 +149,123 @@
 `);
 
   const bg = document.createElement('div');
-  bg.setAttribute('class', BG_CLASS_NAME);
+  bg.className = BG_CLASS_NAME;
 
   const bgText = document.createElement('p');
   bgText.textContent = 'Перемещайте кнопку внутри этой области';
-  bgText.setAttribute('class', BG_CLASS_NAME + '__text');
+  bgText.className = BG_CLASS_NAME + '__text';
   bg.append(bgText);
 
-  const element = document.createElement('span'); // button is not draggable in Firefox
-  element.setAttribute('class', BUTTON_CLASS_NAME);
+  // NOTE: button is not draggable in Firefox
+  const element = document.createElement('span');
+  element.className = BUTTON_CLASS_NAME;
   element.setAttribute('draggable', 'true');
   element.setAttribute('role', 'button');
   element.setAttribute('tabindex', '0');
   element.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' class='${BUTTON_CLASS_NAME}__icon'><path d='M17.65 6.35c-1.63-1.63-3.94-2.57-6.48-2.31-3.67.37-6.69 3.35-7.1 7.02C3.52 15.91 7.27 20 12 20c3.19 0 5.93-1.87 7.21-4.56.32-.67-.16-1.44-.9-1.44-.37 0-.72.2-.88.53-1.13 2.43-3.84 3.97-6.8 3.31-2.22-.49-4.01-2.3-4.48-4.52C5.31 9.44 8.26 6 12 6c1.66 0 3.14.69 4.22 1.78l-1.51 1.51c-.63.63-.19 1.71.7 1.71H19c.55 0 1-.45 1-1V6.41c0-.89-1.08-1.34-1.71-.71l-.64.65z' fill='currentcolor'/></svg>`;
 
-  function colorize() {
-    element.classList.toggle(BUTTON_CLASS_NAME + '_active', !!timeout);
-  }
+  const BUTTON_CLASSES = {
+    active: BUTTON_CLASS_NAME + '_active',
+    suspended: BUTTON_CLASS_NAME + '_suspended',
+    moving: BUTTON_CLASS_NAME + '_moving',
+  };
 
-  function titlify() {
+  const BG_CLASSES = {
+    active: BG_CLASS_NAME + '_active',
+  };
+
+  function onTimeoutChange() {
+    element.classList.toggle(BUTTON_CLASSES.active, isActive());
+    element.classList.toggle(BUTTON_CLASSES.suspended, isSuspended());
+
     element.title =
-      'Авто-обновление страницы ' + (timeout ? 'включено' : 'выключено');
+      'Авто-обновление страницы ' +
+      (isActive()
+        ? 'включено'
+        : isSuspended()
+        ? 'приостановлено'
+        : 'выключено');
   }
 
-  titlify();
-  colorize();
+  function startTimer() {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(
+      () => location.reload(),
+      7500 + Math.round(Math.random() * 2500)
+    );
+
+    onTimeoutChange();
+  }
+
+  function stopTimer() {
+    clearTimeout(timeout);
+    timeout = null;
+
+    onTimeoutChange();
+  }
+
+  function suspendTimer() {
+    clearTimeout(timeout);
+    timeout = false;
+
+    onTimeoutChange();
+  }
+
+  function toggleTimer() {
+    if (isActive()) {
+      stopTimer();
+    } else {
+      startTimer();
+    }
+  }
+
+  const { startPause, endPause } = (function () {
+    let wasActive = false;
+    let isPaused = false;
+
+    return {
+      startPause: () => {
+        if (isPaused) {
+          return;
+        }
+
+        isPaused = true;
+        wasActive = isActive();
+        stopTimer();
+      },
+
+      endPause: () => {
+        if (!isPaused) {
+          return;
+        }
+
+        isPaused = false;
+
+        if (wasActive) {
+          startTimer();
+          wasActive = false;
+        }
+      },
+    };
+  })();
+
+  if (ls.get(LS_STATE_KEY)) {
+    startTimer();
+  }
 
   function handleAction(event) {
     event.stopPropagation();
 
-    if (!timeout && ls.get(LS_STATE_KEY) !== null) {
+    if (!isActive() && ls.get(LS_STATE_KEY)) {
       startTimer();
-      element.classList.remove(BUTTON_CLASS_NAME + '_paused');
+      element.classList.remove(BUTTON_CLASSES.suspended);
     } else {
-      toggleTimerWithLS();
+      toggleTimer();
+      updateLocalStorageState();
     }
-
-    titlify();
-    colorize();
   }
 
   element.addEventListener('click', handleAction);
@@ -224,12 +276,12 @@
   });
 
   element.addEventListener('dragstart', (event) => {
-    timerPauseToggle();
+    startPause();
 
     event.dataTransfer.effectAllowed = 'move';
 
-    element.classList.add(BUTTON_CLASS_NAME + '_moving');
-    bg.classList.add(BG_CLASS_NAME + '_active');
+    element.classList.add(BUTTON_CLASSES.moving);
+    bg.classList.add(BG_CLASSES.active);
   });
 
   bg.addEventListener('dragover', (event) => {
@@ -253,22 +305,42 @@
   element.addEventListener('dragend', (event) => {
     event.preventDefault();
 
-    timerPauseToggle();
+    endPause();
 
-    element.classList.remove(BUTTON_CLASS_NAME + '_moving');
-    bg.classList.remove(BG_CLASS_NAME + '_active');
+    element.classList.remove(BUTTON_CLASSES.moving);
+    bg.classList.remove(BG_CLASSES.active);
   });
 
   document.body.append(bg, element);
 
   document.addEventListener('click', () => {
-    if (!timeout) {
+    if (!isActive()) {
       return;
     }
 
-    stopTimer();
-    element.classList.remove(BUTTON_CLASS_NAME + '_active');
-    element.classList.add(BUTTON_CLASS_NAME + '_paused');
-    element.title = 'Авто-обновление страницы приостановлено';
+    suspendTimer();
+  });
+
+  window.addEventListener('storage', ({ key, newValue }) => {
+    if (key === null) {
+      stopTimer();
+
+      return;
+    }
+
+    if (key !== LS_STATE_KEY) {
+      return;
+    }
+
+    // TODO: do we need to toggle suspended state?
+    if (isSuspended()) {
+      return;
+    }
+
+    if (newValue === null) {
+      stopTimer();
+    } else {
+      startTimer();
+    }
   });
 })();
