@@ -7,7 +7,7 @@
 // @downloadURL https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @updateURL   https://raw.github.com/kosmotema/redfresher/main/redfresher.user.js
 // @homepageURL https://github.com/kosmotema/redfresher
-// @version     3.1.0
+// @version     3.1.1
 // @grant       GM_addStyle
 // @noframes
 // ==/UserScript==
@@ -103,7 +103,7 @@
   color: green;
 }
 
-.${BUTTON_CLASS_NAME}_paused {
+.${BUTTON_CLASS_NAME}_suspended {
   color: orange;
 }
 
